@@ -187,31 +187,34 @@
         }
       }, 700);
     }
-
-    function registrar(accion) {
-      if (!personaDetectada || !coords.lat) {
-        document.getElementById('saludo').innerHTML = "⚠️ Esperando ubicación GPS...";
-        return;
-      }
-      
-      const buttons = document.querySelectorAll('button');
-      buttons.forEach(b => b.disabled = true);
+function registrar(accion) {
+      if (!personaDetectada || !coords.lat) return;
       
       const saludo = document.getElementById('saludo');
       saludo.innerHTML = "⌛ GUARDANDO REGISTRO...";
       document.getElementById('panel').style.display = "none";
 
-      google.script.run.withSuccessHandler(res => {
+      // REEMPLAZA ESTO CON TU URL DE GOOGLE DEL PASO 1
+      const urlAPI = 'https://script.google.com/macros/s/AKfycbw0R4RLbRSCJuoJKo6d_dDFLE0hu-6XahMWYRK0opFyvgNEv2HyPthqMkwWx-jsMtw/exec';
+
+      fetch(urlAPI, {
+        method: 'POST',
+        body: JSON.stringify({
+          cedula: personaDetectada,
+          nombre: nombreDetectado,
+          accion: accion,
+          lat: coords.lat, 
+          lon: coords.lon
+        })
+      })
+      .then(res => res.json())
+      .then(res => {
         saludo.innerHTML = res.message;
-        setTimeout(() => {
-          buttons.forEach(b => b.disabled = false);
-          resetearUI();
-        }, 3000);
-      }).registrarAsistencia({
-        cedula: personaDetectada,
-        nombre: nombreDetectado,
-        accion: accion,
-        lat: coords.lat, lon: coords.lon
+        setTimeout(resetearUI, 3000);
+      })
+      .catch(err => {
+        saludo.innerHTML = "❌ Error de conexión";
+        console.error(err);
       });
     }
 
