@@ -5,75 +5,55 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
   <style>
-    /* DISEÑO RESPONSIVO PARA AGRO JABAR */
-    body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #eceff1; margin: 0; padding: 10px; box-sizing: border-box; }
+    /* DISEÑO RESPONSIVO AGRO JABAR */
+    body { font-family: 'Segoe UI', system-ui, sans-serif; text-align: center; background: #eceff1; margin: 0; padding: 10px; box-sizing: border-box; color: #263238; }
+    #status-init { font-size: 11px; color: #90a4ae; font-weight: bold; margin-bottom: 5px; }
+    #saludo { font-size: 20px; color: #1a237e; margin: 15px 0; font-weight: bold; min-height: 50px; line-height: 1.2; }
     
-    #saludo { font-size: 22px; color: #1a237e; margin: 15px 0; font-weight: bold; min-height: 60px; }
-    
-    .camera-box { width: 100%; max-width: 400px; aspect-ratio: 4/3; border-radius: 20px; background: #000; margin: 0 auto; overflow: hidden; border: 5px solid #90a4ae; position: relative; }
+    .camera-box { width: 100%; max-width: 400px; aspect-ratio: 4/3; border-radius: 25px; background: #000; margin: 0 auto; overflow: hidden; border: 6px solid #cfd8dc; position: relative; box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
     #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
 
-    .panel-acciones { 
-      display: none; 
-      flex-direction: column; 
-      gap: 12px; 
-      width: 100%; 
-      max-width: 400px; 
-      margin: 20px auto; 
-    }
+    .panel-acciones { display: none; flex-direction: column; gap: 12px; width: 100%; max-width: 400px; margin: 20px auto; animation: fadeInUp 0.5s ease; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* BOTONES GRANDES PARA CAMPO */
-    button { 
-      width: 100%; 
-      padding: 22px; 
-      border-radius: 15px; 
-      border: none; 
-      font-size: 18px; 
-      font-weight: bold; 
-      color: white; 
-      cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-      transition: 0.2s;
-    }
-    button:active { transform: scale(0.98); box-shadow: none; }
-    button:disabled { background: #9e9e9e !important; opacity: 0.6; }
+    button { width: 100%; padding: 22px; border-radius: 18px; border: none; font-size: 18px; font-weight: bold; color: white; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); -webkit-tap-highlight-color: transparent; }
+    button:active { transform: scale(0.96); box-shadow: none; }
+    button:disabled { background: #b0bec5 !important; cursor: not-allowed; }
 
-    .btn-llegue { background: #2e7d32; }
-    .btn-salgo { background: #ef6c00; }
-    .btn-vuelvo { background: #1565c0; }
-    .btn-mevoy { background: #c62828; }
+    .btn-llegue { background: #2e7d32; } /* Verde Agro */
+    .btn-salgo { background: #ef6c00; }  /* Naranja */
+    .btn-vuelvo { background: #1565c0; } /* Azul */
+    .btn-mevoy { background: #c62828; }   /* Rojo */
     
-    #btnDesbloqueo { background: #01579b; margin-bottom: 20px; display: none; }
-    .sisma-logo { font-size: 12px; color: #78909c; margin-top: 25px; font-weight: bold; }
+    #btnDesbloqueo { background: #01579b; display: none; margin-bottom: 15px; }
+    .sisma-logo { font-size: 11px; color: #90a4ae; margin-top: 30px; letter-spacing: 1px; }
   </style>
 </head>
 <body>
-  <div id="status-init" style="font-size:11px; color:#90a4ae;">⚙️ INICIANDO...</div>
-  <div id="saludo">Conectando con el servidor...</div>
+  <div id="status-init">⚙️ SISTEMA SIGET-P</div>
+  <div id="saludo">Conectando con Agro Jabar...</div>
   
   <button id="btnDesbloqueo" onclick="iniciarCamara()">📷 ENCENDER CÁMARA</button>
 
   <div class="camera-box"><video id="video" autoplay muted playsinline></video></div>
 
   <div id="panel" class="panel-acciones">
-    <button class="btn-llegue" onclick="registrar('LLEGUE A TRABAJAR')">☀️ LLEGUE A TRABAJAR</button>
+    <button class="btn-llegue" id="btn-1" onclick="registrar('LLEGUE A TRABAJAR')">☀️ LLEGUE A TRABAJAR</button>
     <div style="display:flex; gap:10px; width:100%;">
-      <button class="btn-salgo" onclick="registrar('SALGO A COMER')">🍴 SALGO</button>
-      <button class="btn-vuelvo" onclick="registrar('VOLVI DE COMER')">↩️ VOLVÍ</button>
+      <button class="btn-salgo" id="btn-2" onclick="registrar('SALGO A COMER')">🍴 SALGO</button>
+      <button class="btn-vuelvo" id="btn-3" onclick="registrar('VOLVI DE COMER')">↩️ VOLVÍ</button>
     </div>
-    <button class="btn-mevoy" onclick="registrar('ME VOY A CASA')">🏠 ME VOY A CASA</button>
+    <button class="btn-mevoy" id="btn-4" onclick="registrar('ME VOY A CASA')">🏠 ME VOY A CASA</button>
   </div>
 
   <div class="sisma-logo">SISMA v1.5 | AGRO JABAR SAS</div>
 
   <script>
-    // --- PEGA AQUÍ TU URL /exec ---
     const urlAPI = 'https://script.google.com/macros/s/AKfycbxZ-w7GnW6lIlCgfyZzrA8W5oZI4-Ec9VDN57g7EWOLBRkbrzhImwG2l21QSO9cBAEF/exec';
 
     let faceMatcher = null;
     let nombresMaestro = {};
     let personaDetectada = null; 
-    let nombreDetectado = null;  
     let coords = { lat: 0, lon: 0 };
 
     async function iniciar() {
@@ -83,7 +63,8 @@
         await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
         await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 
-        const res = await fetch(urlAPI, { method: 'POST', body: JSON.stringify({ action: 'obtenerModelos' }) });
+        // --- SOLUCIÓN ERROR CONEXIÓN: USAR GET ---
+        const res = await fetch(`${urlAPI}?action=obtenerModelos`);
         const modelos = await res.json();
 
         const labeledDescriptors = modelos.map(m => {
@@ -93,10 +74,11 @@
 
         faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.55);
         document.getElementById('status-init').innerText = "CONECTADO ✅";
-        document.getElementById('saludo').innerText = "¡Listo! Toca el botón azul.";
+        document.getElementById('saludo').innerText = "¡Listo! Toca el botón azul para empezar.";
         document.getElementById('btnDesbloqueo').style.display = "block";
       } catch (e) {
-        document.getElementById('saludo').innerText = "❌ Error de conexión.";
+        console.error(e);
+        document.getElementById('saludo').innerText = "❌ Error de conexión con el servidor.";
       }
     }
 
@@ -114,7 +96,7 @@
 
         iniciarDeteccion();
       } catch (err) {
-        alert("Error de cámara: " + err.message);
+        alert("Error de cámara o permisos: " + err.message);
       }
     }
 
@@ -125,10 +107,11 @@
         const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
         if (detection) {
           const match = faceMatcher.findBestMatch(detection.descriptor);
-          if (match.label !== 'unknown') {
+          if (match.label !== 'unknown' && personaDetectada !== match.label) {
             personaDetectada = match.label;
-            nombreDetectado = nombresMaestro[match.label];
-            document.getElementById('saludo').innerHTML = `¡Hola, <b>${nombreDetectado}</b>!`;
+            const nombreFull = nombresMaestro[match.label];
+            const primerNombre = nombreFull.split(' ')[0];
+            document.getElementById('saludo').innerHTML = `¡Hola, <b>${primerNombre}</b>!<br><span style="font-size:16px;">¿Qué vas a registrar?</span>`;
             document.getElementById('panel').style.display = "flex";
           }
         }
@@ -138,30 +121,31 @@
     async function registrar(accion) {
       if (!personaDetectada) return;
       
-      const buttons = document.querySelectorAll('#panel button');
+      const buttons = document.querySelectorAll('button');
       buttons.forEach(b => b.disabled = true);
       const saludo = document.getElementById('saludo');
       saludo.innerText = "⌛ GUARDANDO REGISTRO...";
 
       try {
-        const response = await fetch(urlAPI, {
+        // Enviar vía POST (no-cors para evitar bloqueos)
+        await fetch(urlAPI, {
           method: 'POST',
-          mode: 'no-cors', // MODO CRÍTICO PARA GOOGLE APPS SCRIPT
+          mode: 'no-cors',
           body: JSON.stringify({
             cedula: personaDetectada,
-            nombre: nombreDetectado,
+            nombre: nombresMaestro[personaDetectada],
             accion: accion,
             lat: coords.lat,
             lon: coords.lon
           })
         });
 
-        // Como usamos no-cors, no podemos leer la respuesta pero el dato LLEGA
-        saludo.innerText = "✅ ¡REGISTRO ENVIADO!";
-        setTimeout(() => { location.reload(); }, 3000);
+        // Como es no-cors, asumimos éxito si no hay error de red
+        saludo.innerHTML = "✅ ¡REGISTRO EXITOSO!<br><small>Ya puedes retirarte.</small>";
+        setTimeout(() => { location.reload(); }, 3500);
 
       } catch (error) {
-        saludo.innerText = "❌ Error al guardar.";
+        saludo.innerText = "❌ Error al guardar. Intenta de nuevo.";
         buttons.forEach(b => b.disabled = false);
       }
     }
