@@ -43,16 +43,30 @@
     let nombreDetectado = null;  
     let coords = { lat: null, lon: null };
 
-    async function iniciar() {
+   async function iniciar() {
+      const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
+      // --- PEGA AQUÍ TU URL DE GOOGLE EXACTA ---
+      const urlAPI = 'https://script.google.com/macros/s/AKfycbw0R4RLbRSCJuoJKo6d_dDFLE0hu-6XahMWYRK0opFyvgNEv2HyPthqMkwWx-jsMtw/exec'; 
+
       try {
-        const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
+        document.getElementById('saludo').innerHTML = "⌛ Descargando IA y Rostros...";
+        
+        // Carga de pesas de la IA (desde GitHub Raw)
         await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
         await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
         await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 
-        // Fetch para obtener modelos desde Sheets
-        const res = await fetch(urlAPI, { method: 'POST', body: JSON.stringify({ action: 'obtenerModelos' }) });
+        // Petición a tu Google Sheet (MODELOS_ROSTROS)
+        const res = await fetch(urlAPI, { 
+          method: 'POST', 
+          body: JSON.stringify({ action: 'obtenerModelos' }) 
+        });
+        
         const modelos = await res.json();
+
+        if (!modelos || modelos.length === 0) {
+           throw new Error("No hay modelos en la hoja MODELOS_ROSTROS");
+        }
 
         const labeledDescriptors = modelos.map(m => {
           nombresMaestro[m.cedula] = m.nombre;
@@ -60,12 +74,14 @@
         });
 
         faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.55);
+        
         document.getElementById('status-init').innerText = "SISMA LISTO ✅";
-        document.getElementById('saludo').innerHTML = "Toca el botón para empezar.";
+        document.getElementById('saludo').innerHTML = "Sistema listo. Toca el botón para empezar.";
         document.getElementById('btnDesbloqueo').style.display = "block";
+
       } catch (error) {
-        document.getElementById('saludo').innerHTML = "❌ Error de conexión con el servidor.";
-        console.error(error);
+        document.getElementById('saludo').innerHTML = "❌ Error: No se pudo conectar con el servidor de rostros.";
+        console.error("Detalle del error:", error);
       }
     }
 
