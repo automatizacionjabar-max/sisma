@@ -6,37 +6,31 @@
   <title>SISMA - Agro Jabar</title>
   <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
   <style>
-    /* RESET Y BASES */
+    /* RESET Y BASES RESPONSIVAS */
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { font-family: 'Segoe UI', system-ui, sans-serif; text-align: center; background: #cfd8dc; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
     
-    /* CABECERA */
     #status-init { font-size: 12px; color: #455a64; margin: 5px 0; text-transform: uppercase; font-weight: 800; letter-spacing: 1px; }
-    #saludo { font-size: clamp(1.2rem, 5vw, 1.6rem); color: #1a237e; margin: 10px 0; min-height: 80px; font-weight: 800; display: flex; align-items: center; justify-content: center; padding: 0 10px; line-height: 1.2; }
+    #saludo { font-size: clamp(1.1rem, 4.5vw, 1.5rem); color: #1a237e; margin: 10px 0; min-height: 90px; font-weight: 800; display: flex; align-items: center; justify-content: center; padding: 0 10px; line-height: 1.2; }
 
-    /* CONTENEDOR DE CÁMARA RESPONSIVO */
     .camera-box { width: 100%; max-width: 420px; aspect-ratio: 4/3; border-radius: 25px; background: #000; overflow: hidden; position: relative; border: 6px solid #90a4ae; box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
     #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
     
-    /* PANEL DE BOTONES 100% RESPONSIVO */
     .panel-acciones { display: none; flex-direction: column; gap: 12px; width: 100%; max-width: 420px; margin-top: 20px; animation: fadeInUp 0.4s ease-out; }
     
-    /* BOTONES ESTILO CAMPO (GRANDES Y CLAROS) */
-    button { width: 100%; border: none; color: white; padding: 22px 10px; border-radius: 18px; font-size: clamp(1rem, 4vw, 1.3rem); font-weight: 800; cursor: pointer; box-shadow: 0 5px 10px rgba(0,0,0,0.2); transition: transform 0.1s, background 0.2s; text-transform: uppercase; }
+    button { width: 100%; border: none; color: white; padding: 22px 10px; border-radius: 18px; font-size: clamp(0.9rem, 3.8vw, 1.2rem); font-weight: 800; cursor: pointer; box-shadow: 0 5px 10px rgba(0,0,0,0.2); transition: transform 0.1s; text-transform: uppercase; }
     button:active { transform: scale(0.97); }
-    button:disabled { background: #b0bec5 !important; opacity: 0.7; box-shadow: none; }
+    button:disabled { background: #b0bec5 !important; opacity: 0.7; }
     
     .btn-llegue { background: #2e7d32; }
     .btn-salgo { background: #ef6c00; }
     .btn-vuelvo { background: #0277bd; }
     .btn-mevoy { background: #c62828; }
     
-    /* FILA DOBLE PARA COMIDA */
     .fila-doble { display: flex; gap: 12px; width: 100%; }
     .fila-doble button { flex: 1; padding: 25px 5px; }
 
     #btnDesbloqueo { display: none; width: 100%; max-width: 420px; background: #1a237e; margin-top: 10px; }
-    
     .sisma-logo { font-size: 11px; color: #546e7a; margin-top: auto; padding: 20px 0; font-weight: bold; }
     
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
@@ -44,7 +38,7 @@
 </head>
 <body>
 
-  <div id="status-init">⚙️ SISMA SIGET-P v2.1</div>
+  <div id="status-init">⚙️ SISMA SIGET-P v2.2</div>
   <div id="saludo">Sincronizando con SISMA...</div>
   
   <button id="btnDesbloqueo" onclick="iniciarCamara()">📷 ENCENDER CÁMARA</button>
@@ -56,8 +50,8 @@
   <div id="panel" class="panel-acciones">
     <button class="btn-llegue" onclick="registrar('LLEGUE A TRABAJAR')">☀️ LLEGUE A TRABAJAR</button>
     <div class="fila-doble">
-      <button class="btn-salgo" onclick="registrar('SALGO A COMER')">🍴 SALGO A COMER</button>
-      <button class="btn-vuelvo" onclick="registrar('VOLVI DE COMER')">↩️ VOLVÍ DE COMER</button>
+      <button class="btn-salgo" onclick="registrar('SALGO A COMER')">🍴 SALGO</button>
+      <button class="btn-vuelvo" onclick="registrar('VOLVI DE COMER')">↩️ VOLVÍ</button>
     </div>
     <button class="btn-mevoy" onclick="registrar('ME VOY A CASA')">🏠 ME VOY A CASA</button>
   </div>
@@ -110,6 +104,17 @@
       document.querySelectorAll('button').forEach(b => b.disabled = false);
     }
 
+    // --- LÓGICA DE NOMBRES ---
+    function obtenerNombreCorto(nombreFull) {
+      const partes = nombreFull.trim().split(/\s+/);
+      // Caso 1: Tiene 3 o más palabras (Ej: Jorge Esteban Campino Galvez) -> Jorge Campino
+      if (partes.length >= 3) {
+        return partes[0] + " " + partes[2];
+      } 
+      // Caso 2: Tiene 2 palabras (Ej: Jorge Campino) -> Jorge Campino
+      return partes[0] + (partes[1] ? " " + partes[1] : "");
+    }
+
     function iniciarDeteccion() {
       const video = document.getElementById('video');
       setInterval(async () => {
@@ -122,8 +127,10 @@
             if (personaDetectada !== match.label) {
               personaDetectada = match.label;
               nombreDetectado = nombresMaestro[match.label];
-              const primerNombre = nombreDetectado.split(' ')[0];
-              document.getElementById('saludo').innerHTML = `¡Hola, <b>${primerNombre}</b>! 👋<br><span style="font-size:0.7em; font-weight:normal">¿Qué vas a registrar hoy?</span>`;
+              
+              // MOSTRAR: Nombre + Primer Apellido
+              const nombreCorto = obtenerNombreCorto(nombreDetectado);
+              document.getElementById('saludo').innerHTML = `¡Hola, <b>${nombreCorto}</b>! 👋<br><span style="font-size:0.7em; font-weight:normal">¿Qué vas a registrar hoy?</span>`;
               document.getElementById('camBox').style.borderColor = "#2e7d32";
               document.getElementById('panel').style.display = "flex";
             }
@@ -147,9 +154,11 @@
           mode: 'no-cors',
           body: JSON.stringify({ cedula: personaDetectada, nombre: nombreDetectado, accion: accion, lat: coords.lat, lon: coords.lon })
         });
-        const n = nombreDetectado.split(' ')[0];
-        document.getElementById('saludo').innerHTML = `✅ ¡Listo ${n}!<br><span style="color:#2e7d32; font-size:0.8em">Registro guardado.</span>`;
+        
+        // MOSTRAR: Nombre Completo al finalizar
+        document.getElementById('saludo').innerHTML = `✅ ¡Listo!<br><b style="font-size:0.9em">${nombreDetectado}</b><br><span style="color:#2e7d32; font-size:0.75em">Registro guardado con éxito.</span>`;
         document.getElementById('camBox').style.borderColor = "#2e7d32";
+        
         setTimeout(() => { resetearUI(); }, 3000); // Éxito 3s
       } catch (error) {
         document.getElementById('saludo').innerHTML = "❌ Error al guardar.";
