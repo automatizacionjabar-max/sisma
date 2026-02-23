@@ -58,15 +58,23 @@
 
     async function iniciar() {
       const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
+      // TU NUEVA URL
+      const urlAPI = 'https://script.google.com/macros/s/AKfycbw0R4RLbRSCJuoJKo6d_dDFLE0hu-6XahMWYRK0opFyvgNEv2HyPthqMkwWx-jsMtw/exec';
+
       try {
+        // 1. Cargamos la IA
         await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
         await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
         await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 
-        // --- SOLUCIÓN ERROR CONEXIÓN: USAR GET ---
+        // 2. Traemos los rostros desde Sheets (Usando GET para evitar bloqueo de conexión)
         const res = await fetch(`${urlAPI}?action=obtenerModelos`);
+        
+        if (!res.ok) throw new Error("Respuesta del servidor no válida");
+        
         const modelos = await res.json();
 
+        // 3. Procesamos los descriptores
         const labeledDescriptors = modelos.map(m => {
           nombresMaestro[m.cedula] = m.nombre;
           return new faceapi.LabeledFaceDescriptors(m.cedula, [new Float32Array(m.descriptor)]);
@@ -74,11 +82,12 @@
 
         faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.55);
         document.getElementById('status-init').innerText = "CONECTADO ✅";
-        document.getElementById('saludo').innerText = "¡Listo! Toca el botón azul para empezar.";
+        document.getElementById('saludo').innerText = "¡Listo! Toca el botón azul.";
         document.getElementById('btnDesbloqueo').style.display = "block";
+
       } catch (e) {
-        console.error(e);
-        document.getElementById('saludo').innerText = "❌ Error de conexión con el servidor.";
+        console.error("Error técnico:", e);
+        document.getElementById('saludo').innerText = "❌ Error de conexión. Revisa que el Script esté publicado para 'Cualquier persona'.";
       }
     }
 
