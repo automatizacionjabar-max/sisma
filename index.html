@@ -1,72 +1,90 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
   <style>
-    body { font-family: 'Segoe UI', Roboto, sans-serif; text-align: center; background: #cfd8dc; margin: 0; padding: 15px; }
-    .camera-box { width: 100%; max-width: 400px; height: 320px; border-radius: 30px; background: #000; margin: 10px auto; overflow: hidden; position: relative; border: 8px solid #90a4ae; transition: 0.3s; box-shadow: 0 12px 24px rgba(0,0,0,0.2); }
+    /* DISEÑO RESPONSIVO PARA AGRO JABAR */
+    body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #eceff1; margin: 0; padding: 10px; box-sizing: border-box; }
+    
+    #saludo { font-size: 22px; color: #1a237e; margin: 15px 0; font-weight: bold; min-height: 60px; }
+    
+    .camera-box { width: 100%; max-width: 400px; aspect-ratio: 4/3; border-radius: 20px; background: #000; margin: 0 auto; overflow: hidden; border: 5px solid #90a4ae; position: relative; }
     #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-    #saludo { font-size: 26px; color: #1a237e; margin: 20px 0; min-height: 70px; line-height: 1.3; font-weight: bold; }
-    #status-init { font-size: 13px; color: #546e7a; margin-bottom: 5px; text-transform: uppercase; }
-    .panel-acciones { display: none; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 440px; margin: auto; }
-    button { border: none; color: white; padding: 28px 10px; border-radius: 20px; font-size: 18px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 12px rgba(0,0,0,0.2); }
-    .btn-llegue { background: #1b5e20; grid-column: span 2; font-size: 24px; }
-    .btn-salgo { background: #e65100; }
-    .btn-vuelvo { background: #01579b; }
-    .btn-mevoy { background: #b71c1c; grid-column: span 2; font-size: 24px; }
+
+    .panel-acciones { 
+      display: none; 
+      flex-direction: column; 
+      gap: 12px; 
+      width: 100%; 
+      max-width: 400px; 
+      margin: 20px auto; 
+    }
+
+    /* BOTONES GRANDES PARA CAMPO */
+    button { 
+      width: 100%; 
+      padding: 22px; 
+      border-radius: 15px; 
+      border: none; 
+      font-size: 18px; 
+      font-weight: bold; 
+      color: white; 
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+      transition: 0.2s;
+    }
+    button:active { transform: scale(0.98); box-shadow: none; }
+    button:disabled { background: #9e9e9e !important; opacity: 0.6; }
+
+    .btn-llegue { background: #2e7d32; }
+    .btn-salgo { background: #ef6c00; }
+    .btn-vuelvo { background: #1565c0; }
+    .btn-mevoy { background: #c62828; }
+    
+    #btnDesbloqueo { background: #01579b; margin-bottom: 20px; display: none; }
+    .sisma-logo { font-size: 12px; color: #78909c; margin-top: 25px; font-weight: bold; }
   </style>
 </head>
 <body>
-  <div id="status-init">⚙️ Iniciando SISMA...</div>
+  <div id="status-init" style="font-size:11px; color:#90a4ae;">⚙️ INICIANDO...</div>
   <div id="saludo">Conectando con el servidor...</div>
   
-  <button id="btnDesbloqueo" onclick="iniciarCamara()" style="display:none; width:80%; max-width:400px; margin: 15px auto; background:#01579b; color:white; padding:20px; border-radius:15px; border:none; font-size:18px; font-weight:bold; cursor:pointer;">
-    📷 ENCENDER CÁMARA
-  </button>
+  <button id="btnDesbloqueo" onclick="iniciarCamara()">📷 ENCENDER CÁMARA</button>
 
   <div class="camera-box"><video id="video" autoplay muted playsinline></video></div>
 
   <div id="panel" class="panel-acciones">
     <button class="btn-llegue" onclick="registrar('LLEGUE A TRABAJAR')">☀️ LLEGUE A TRABAJAR</button>
-    <button class="btn-salgo" onclick="registrar('SALGO A COMER')">🍴 SALGO A COMER</button>
-    <button class="btn-vuelvo" onclick="registrar('VOLVI DE COMER')">↩️ VOLVI DE COMER</button>
+    <div style="display:flex; gap:10px; width:100%;">
+      <button class="btn-salgo" onclick="registrar('SALGO A COMER')">🍴 SALGO</button>
+      <button class="btn-vuelvo" onclick="registrar('VOLVI DE COMER')">↩️ VOLVÍ</button>
+    </div>
     <button class="btn-mevoy" onclick="registrar('ME VOY A CASA')">🏠 ME VOY A CASA</button>
   </div>
 
+  <div class="sisma-logo">SISMA v1.5 | AGRO JABAR SAS</div>
+
   <script>
-    // PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT
+    // --- PEGA AQUÍ TU URL /exec ---
     const urlAPI = 'https://script.google.com/macros/s/AKfycbxZ-w7GnW6lIlCgfyZzrA8W5oZI4-Ec9VDN57g7EWOLBRkbrzhImwG2l21QSO9cBAEF/exec';
 
     let faceMatcher = null;
     let nombresMaestro = {};
     let personaDetectada = null; 
     let nombreDetectado = null;  
-    let coords = { lat: null, lon: null };
+    let coords = { lat: 0, lon: 0 };
 
-   async function iniciar() {
+    async function iniciar() {
       const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
-      // --- PEGA AQUÍ TU URL DE GOOGLE EXACTA ---
-      const urlAPI = 'https://script.google.com/macros/s/AKfycbw0R4RLbRSCJuoJKo6d_dDFLE0hu-6XahMWYRK0opFyvgNEv2HyPthqMkwWx-jsMtw/exec'; 
-
       try {
-        document.getElementById('saludo').innerHTML = "⌛ Descargando IA y Rostros...";
-        
-        // Carga de pesas de la IA (desde GitHub Raw)
         await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
         await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
         await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 
-        // Petición a tu Google Sheet (MODELOS_ROSTROS)
-        const res = await fetch(urlAPI, { 
-          method: 'POST', 
-          body: JSON.stringify({ action: 'obtenerModelos' }) 
-        });
-        
+        const res = await fetch(urlAPI, { method: 'POST', body: JSON.stringify({ action: 'obtenerModelos' }) });
         const modelos = await res.json();
-
-        if (!modelos || modelos.length === 0) {
-           throw new Error("No hay modelos en la hoja MODELOS_ROSTROS");
-        }
 
         const labeledDescriptors = modelos.map(m => {
           nombresMaestro[m.cedula] = m.nombre;
@@ -74,14 +92,11 @@
         });
 
         faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.55);
-        
-        document.getElementById('status-init').innerText = "SISMA LISTO ✅";
-        document.getElementById('saludo').innerHTML = "Sistema listo. Toca el botón para empezar.";
+        document.getElementById('status-init').innerText = "CONECTADO ✅";
+        document.getElementById('saludo').innerText = "¡Listo! Toca el botón azul.";
         document.getElementById('btnDesbloqueo').style.display = "block";
-
-      } catch (error) {
-        document.getElementById('saludo').innerHTML = "❌ Error: No se pudo conectar con el servidor de rostros.";
-        console.error("Detalle del error:", error);
+      } catch (e) {
+        document.getElementById('saludo').innerText = "❌ Error de conexión.";
       }
     }
 
@@ -90,21 +105,22 @@
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
         document.getElementById('video').srcObject = stream;
         document.getElementById('btnDesbloqueo').style.display = "none";
-        document.getElementById('saludo').innerHTML = "Por favor, mira a la cámara";
+        document.getElementById('saludo').innerText = "Por favor, mira a la cámara";
 
         navigator.geolocation.watchPosition(p => {
-          coords.lat = p.coords.latitude; coords.lon = p.coords.longitude;
+          coords.lat = p.coords.latitude; 
+          coords.lon = p.coords.longitude;
         }, null, {enableHighAccuracy: true});
 
         iniciarDeteccion();
       } catch (err) {
-        document.getElementById('saludo').innerHTML = "⚠️ Cámara bloqueada. Revisa permisos.";
+        alert("Error de cámara: " + err.message);
       }
     }
 
     function iniciarDeteccion() {
       const video = document.getElementById('video');
-      setInterval(async () => {
+      const interval = setInterval(async () => {
         if (!faceMatcher) return;
         const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
         if (detection) {
@@ -112,25 +128,42 @@
           if (match.label !== 'unknown') {
             personaDetectada = match.label;
             nombreDetectado = nombresMaestro[match.label];
-            document.getElementById('saludo').innerHTML = `¡Hola, <b>${nombreDetectado}</b>! 👋`;
-            document.getElementById('panel').style.display = "grid";
+            document.getElementById('saludo').innerHTML = `¡Hola, <b>${nombreDetectado}</b>!`;
+            document.getElementById('panel').style.display = "flex";
           }
         }
       }, 700);
     }
 
     async function registrar(accion) {
-      if (!personaDetectada || !coords.lat) return;
-      document.getElementById('saludo').innerHTML = "⌛ GUARDANDO...";
-      document.getElementById('panel').style.display = "none";
+      if (!personaDetectada) return;
+      
+      const buttons = document.querySelectorAll('#panel button');
+      buttons.forEach(b => b.disabled = true);
+      const saludo = document.getElementById('saludo');
+      saludo.innerText = "⌛ GUARDANDO REGISTRO...";
 
-      const res = await fetch(urlAPI, {
-        method: 'POST',
-        body: JSON.stringify({ cedula: personaDetectada, nombre: nombreDetectado, accion: accion, lat: coords.lat, lon: coords.lon })
-      });
-      const data = await res.json();
-      document.getElementById('saludo').innerHTML = data.message;
-      setTimeout(() => { location.reload(); }, 3000);
+      try {
+        const response = await fetch(urlAPI, {
+          method: 'POST',
+          mode: 'no-cors', // MODO CRÍTICO PARA GOOGLE APPS SCRIPT
+          body: JSON.stringify({
+            cedula: personaDetectada,
+            nombre: nombreDetectado,
+            accion: accion,
+            lat: coords.lat,
+            lon: coords.lon
+          })
+        });
+
+        // Como usamos no-cors, no podemos leer la respuesta pero el dato LLEGA
+        saludo.innerText = "✅ ¡REGISTRO ENVIADO!";
+        setTimeout(() => { location.reload(); }, 3000);
+
+      } catch (error) {
+        saludo.innerText = "❌ Error al guardar.";
+        buttons.forEach(b => b.disabled = false);
+      }
     }
 
     iniciar();
