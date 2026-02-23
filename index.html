@@ -5,41 +5,57 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
   <style>
-    body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #eceff1; margin: 0; padding: 10px; }
-    #saludo { font-size: 20px; color: #1a237e; margin: 15px 0; font-weight: bold; min-height: 50px; }
-    .camera-box { width: 100%; max-width: 400px; aspect-ratio: 4/3; border-radius: 20px; background: #000; margin: 0 auto; overflow: hidden; border: 5px solid #90a4ae; position: relative; }
+    body { font-family: 'Segoe UI', Roboto, sans-serif; text-align: center; background: #cfd8dc; margin: 0; padding: 15px; }
+    .camera-box { width: 100%; max-width: 400px; aspect-ratio: 4/3; border-radius: 30px; background: #000; margin: 10px auto; overflow: hidden; position: relative; border: 8px solid #90a4ae; transition: 0.3s; box-shadow: 0 12px 24px rgba(0,0,0,0.2); }
     #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-    .panel-acciones { display: none; flex-direction: column; gap: 12px; width: 100%; max-width: 400px; margin: 20px auto; }
-    button { width: 100%; padding: 22px; border-radius: 15px; border: none; font-size: 18px; font-weight: bold; color: white; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
-    .btn-llegue { background: #2e7d32; }
-    .btn-salgo { background: #ef6c00; }
-    .btn-vuelvo { background: #1565c0; }
-    .btn-mevoy { background: #c62828; }
-    #btnDesbloqueo { background: #01579b; margin-bottom: 20px; display: none; }
+    #saludo { font-size: 24px; color: #1a237e; margin: 20px 0; min-height: 70px; line-height: 1.3; font-weight: bold; }
+    #status-init { font-size: 11px; color: #546e7a; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+
+    .panel-acciones { display: none; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 440px; margin: auto; animation: fadeInUp 0.4s ease; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    
+    button { border: none; color: white; padding: 25px 10px; border-radius: 20px; font-size: 18px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 12px rgba(0,0,0,0.2); }
+    button:active { transform: scale(0.95); }
+    button:disabled { background: #9e9e9e !important; cursor: not-allowed; opacity: 0.6; }
+    
+    .btn-llegue { background: #1b5e20; grid-column: span 2; font-size: 22px; }
+    .btn-salgo { background: #e65100; }
+    .btn-vuelvo { background: #01579b; }
+    .btn-mevoy { background: #b71c1c; grid-column: span 2; font-size: 22px; }
+    .sisma-logo { font-size: 11px; color: #455a64; margin-top: 25px; font-weight: bold; opacity: 0.7; }
   </style>
 </head>
 <body>
-  <div id="status-init" style="font-size:11px; color:#90a4ae;">⚙️ SISMA SIGET-P</div>
-  <div id="saludo">Conectando...</div>
-  <button id="btnDesbloqueo" onclick="iniciarCamara()">📷 ENCENDER CÁMARA</button>
-  <div class="camera-box"><video id="video" autoplay muted playsinline></video></div>
+  <div id="status-init">⚙️ SIGET-P AGRO JABAR</div>
+  <div id="saludo">Conectando con el servidor...</div>
+  
+  <button id="btnDesbloqueo" onclick="iniciarCamara()" style="display:none; width:80%; max-width:400px; margin: 15px auto; background:#01579b; color:white; padding:20px; border-radius:15px; border:none; font-size:18px; font-weight:bold; cursor:pointer;">
+    📷 ENCENDER CÁMARA
+  </button>
+
+  <div class="camera-box" id="camBox">
+    <video id="video" autoplay muted playsinline></video>
+  </div>
+
   <div id="panel" class="panel-acciones">
     <button class="btn-llegue" onclick="registrar('LLEGUE A TRABAJAR')">☀️ LLEGUE A TRABAJAR</button>
-    <div style="display:flex; gap:10px; width:100%;">
-      <button class="btn-salgo" onclick="registrar('SALGO A COMER')">🍴 SALGO</button>
-      <button class="btn-vuelvo" onclick="registrar('VOLVI DE COMER')">↩️ VOLVÍ</button>
-    </div>
+    <button class="btn-salgo" onclick="registrar('SALGO A COMER')">🍴 SALGO A COMER</button>
+    <button class="btn-vuelvo" onclick="registrar('VOLVI DE COMER')">↩️ VOLVI DE COMER</button>
     <button class="btn-mevoy" onclick="registrar('ME VOY A CASA')">🏠 ME VOY A CASA</button>
   </div>
 
+  <div class="sisma-logo">SISMA v1.6 | Agro Jabar SAS</div>
+
   <script>
-    // --- PEGA AQUÍ TU NUEVA URL /exec ---
-    const urlAPI = 'https://script.google.com/macros/s/AKfycbxWv5tOfuxWEhxr6S11dEuyToBDFLjTh17IBVSLic2xQBQikdBxDo0j_mzWMfvbI-G2/exec'; 
+    // --- CONFIGURACIÓN DE URL ---
+    const urlAPI = 'https://script.google.com/macros/s/AKfycbxWv5tOfuxWEhxr6S11dEuyToBDFLjTh17IBVSLic2xQBQikdBxDo0j_mzWMfvbI-G2/exec';
 
     let faceMatcher = null;
     let nombresMaestro = {};
     let personaDetectada = null; 
+    let nombreDetectado = null;  
     let coords = { lat: 0, lon: 0 };
+    let enviando = false;
 
     async function iniciar() {
       const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
@@ -48,8 +64,8 @@
         await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
         await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 
-        // Usamos GET con redirect follow para traer los modelos
-        const res = await fetch(`${urlAPI}?action=obtenerModelos`, { redirect: 'follow' });
+        // Traer modelos usando GET
+        const res = await fetch(`${urlAPI}?action=obtenerModelos`);
         const modelos = await res.json();
 
         const labeledDescriptors = modelos.map(m => {
@@ -58,11 +74,11 @@
         });
 
         faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.55);
-        document.getElementById('status-init').innerText = "CONECTADO ✅";
-        document.getElementById('saludo').innerText = "Sistema listo. Toca el botón azul.";
+        document.getElementById('status-init').innerText = "SISMA LISTO ✅";
+        document.getElementById('saludo').innerHTML = "Sistema listo. Toca el botón azul.";
         document.getElementById('btnDesbloqueo').style.display = "block";
-      } catch (e) {
-        document.getElementById('saludo').innerText = "❌ Error de sincronización.";
+      } catch (error) {
+        document.getElementById('saludo').innerHTML = "❌ Error de conexión con Google.";
       }
     }
 
@@ -71,49 +87,96 @@
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
         document.getElementById('video').srcObject = stream;
         document.getElementById('btnDesbloqueo').style.display = "none";
-        document.getElementById('saludo').innerText = "Mira a la cámara";
-        
+        document.getElementById('saludo').innerHTML = "Por favor, mira a la cámara";
+
         navigator.geolocation.watchPosition(p => {
-          coords.lat = p.coords.latitude; coords.lon = p.coords.longitude;
+          coords.lat = p.coords.latitude; 
+          coords.lon = p.coords.longitude;
         }, null, {enableHighAccuracy: true});
+
         iniciarDeteccion();
-      } catch (err) { alert("Error cámara: " + err.message); }
+      } catch (err) {
+        alert("Error de cámara: " + err.message);
+      }
+    }
+
+    function resetearUI() {
+      personaDetectada = null;
+      nombreDetectado = null;
+      enviando = false;
+      document.getElementById('panel').style.display = "none";
+      document.getElementById('saludo').innerHTML = "Por favor, mira a la cámara";
+      document.getElementById('camBox').style.borderColor = "#90a4ae";
+      
+      const buttons = document.querySelectorAll('button');
+      buttons.forEach(b => b.disabled = false);
     }
 
     function iniciarDeteccion() {
       const video = document.getElementById('video');
       setInterval(async () => {
-        if (!faceMatcher) return;
+        // Si estamos enviando un registro o ya hay alguien detectado, no buscamos de nuevo
+        if (enviando || personaDetectada || !faceMatcher) return;
+
         const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+        
         if (detection) {
           const match = faceMatcher.findBestMatch(detection.descriptor);
+          
           if (match.label !== 'unknown') {
             personaDetectada = match.label;
-            document.getElementById('saludo').innerHTML = `¡Hola, <b>${nombresMaestro[match.label]}</b>!`;
-            document.getElementById('panel').style.display = "flex";
+            nombreDetectado = nombresMaestro[match.label];
+            
+            const partes = nombreDetectado.split(' ');
+            const nombreMostrar = partes[0] + (partes[1] ? ' ' + partes[1] : '');
+            
+            document.getElementById('saludo').innerHTML = `¡Hola, <b>${nombreMostrar}</b>! 👋<br><span style="font-size:16px">¿Qué vas a registrar?</span>`;
+            document.getElementById('camBox').style.borderColor = "#1b5e20";
+            document.getElementById('panel').style.display = "grid";
           }
         }
       }, 700);
     }
 
     async function registrar(accion) {
-      if (!personaDetectada) return;
-      document.getElementById('saludo').innerText = "⌛ GUARDANDO...";
+      if (!personaDetectada || enviando) return;
+      
+      enviando = true;
+      const buttons = document.querySelectorAll('#panel button');
+      buttons.forEach(b => b.disabled = true);
+      
+      const saludo = document.getElementById('saludo');
+      saludo.innerHTML = "⌛ GUARDANDO REGISTRO...";
+
       try {
+        // Enviamos vía POST con mode: no-cors para evitar bloqueos de Android
         await fetch(urlAPI, {
           method: 'POST',
-          mode: 'no-cors',
+          mode: 'no-cors', 
           body: JSON.stringify({
             cedula: personaDetectada,
-            nombre: nombresMaestro[personaDetectada],
+            nombre: nombreDetectado,
             accion: accion,
-            lat: coords.lat, lon: coords.lon
+            lat: coords.lat, 
+            lon: coords.lon
           })
         });
-        document.getElementById('saludo').innerHTML = "✅ ¡REGISTRO EXITOSO!";
-        setTimeout(() => { location.reload(); }, 3000);
-      } catch (e) { document.getElementById('saludo').innerText = "❌ Error al guardar."; }
+
+        // Simulamos el éxito (ya que no-cors no deja leer la respuesta real)
+        saludo.innerHTML = `✅ ¡Listo ${nombreDetectado.split(' ')[0]}!<br>Registro guardado correctamente.`;
+        
+        // ESPERAMOS 3 SEGUNDOS Y RESETEAMOS SIN APAGAR CÁMARA
+        setTimeout(() => {
+          resetearUI();
+        }, 3000);
+
+      } catch (error) {
+        saludo.innerHTML = "❌ Error al conectar con Google.";
+        enviando = false;
+        buttons.forEach(b => b.disabled = false);
+      }
     }
+
     iniciar();
   </script>
 </body>
