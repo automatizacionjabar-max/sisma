@@ -34,6 +34,20 @@
     .sisma-logo { font-size: 11px; color: #546e7a; margin-top: auto; padding: 20px 0; font-weight: bold; }
     
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    #contador-apagado { 
+  display: none; 
+  background: #c62828; /* Rojo alerta */
+  color: white; 
+  padding: 8px 20px; 
+  border-radius: 15px; 
+  font-weight: 800; 
+  font-size: 0.9rem; 
+  margin-top: -15px; 
+  margin-bottom: 15px;
+  z-index: 10;
+  animation: pulse 1s infinite; 
+}
+@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
   </style>
 </head>
 <body>
@@ -46,6 +60,7 @@
   <div class="camera-box" id="camBox">
     <video id="video" autoplay muted playsinline></video>
   </div>
+  <div id="contador-apagado"></div>
 
   <div id="panel" class="panel-acciones">
     <button class="btn-llegue" onclick="registrar('LLEGUE A TRABAJAR')">☀️ LLEGUE A TRABAJAR</button>
@@ -63,6 +78,38 @@
 
     let faceMatcher = null, nombresMaestro = {}, personaDetectada = null, nombreDetectado = null;
     let coords = { lat: 0, lon: 0 }, enviando = false, watchdogTimer = null;
+    let tiempoInactivo = 0;
+let timerInterval = null;
+const TIEMPO_MAXIMO_SEG = 45; // Tiempo total antes de apagar
+
+function gestionarInactividad() {
+  if (timerInterval) clearInterval(timerInterval);
+  tiempoInactivo = 0;
+  document.getElementById('contador-apagado').style.display = "none";
+
+  timerInterval = setInterval(() => {
+    // Si hay alguien detectado o se está guardando un registro, el tiempo no avanza
+    if (personaDetectada || enviando) {
+      tiempoInactivo = 0;
+      document.getElementById('contador-apagado').style.display = "none";
+      return;
+    }
+
+    tiempoInactivo++;
+    const tiempoRestante = TIEMPO_MAXIMO_SEG - tiempoInactivo;
+
+    // Mostrar alerta en los últimos 10 segundos
+    if (tiempoRestante <= 10 && tiempoRestante > 0) {
+      document.getElementById('contador-apagado').style.display = "block";
+      document.getElementById('contador-apagado').innerText = `Cerrando cámara en ${tiempoRestante}s...`;
+    }
+
+    // Apagar cuando llegue a cero
+    if (tiempoRestante <= 0) {
+      apagarCamara();
+    }
+  }, 1000); // Se ejecuta cada 1 segundo
+}
 
     async function iniciar() {
      const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
@@ -84,16 +131,38 @@
       }
     }
 
-    async function iniciarCamara() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-        document.getElementById('video').srcObject = stream;
-        document.getElementById('btnDesbloqueo').style.display = "none";
-        document.getElementById('saludo').innerHTML = "Mira a la cámara";
-        navigator.geolocation.watchPosition(p => { coords.lat = p.coords.latitude; coords.lon = p.coords.longitude; }, null, {enableHighAccuracy: true});
-        iniciarDeteccion();
-      } catch (err) { alert("Error cámara: " + err.message); }
-    }
+  async function iniciarCamara() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+    document.getElementById('video').srcObject = stream;
+    document.getElementById('btnDesbloqueo').style.display = "none";
+    document.getElementById('saludo').innerHTML = "Mira a la cámara";
+    navigator.geolocation.watchPosition(p => { coords.lat = p.coords.latitude; coords.lon = p.coords.longitude; }, null, {enableHighAccuracy: true});
+    
+    iniciarDeteccion();
+    gestionarInactividad(); // INICIAMOS EL CRONÓMETRO AQUÍ
+    
+  } catch (err) { alert("Error cámara: " + err.message); }
+}
+function apagarCamara() {
+  const video = document.getElementById('video');
+  
+  if (video.srcObject) {
+    video.srcObject.getTracks().forEach(track => track.stop());
+    video.srcObject = null;
+  }
+  
+  if (timerInterval) clearInterval(timerInterval); // Detenemos el reloj
+  document.getElementById('contador-apagado').style.display = "none";
+  document.getElementById('btnDesbloqueo').style.display = "block";
+  document.getElementById('panel').style.display = "none";
+  document.getElementById('saludo').innerHTML = "Sistema en reposo.<br>Toca para iniciar.";
+  document.getElementById('camBox').style.borderColor = "#90a4ae";
+  
+  personaDetectada = null; 
+  nombreDetectado = null; 
+  enviando = false;
+}    
 async function iniciarCamara() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
@@ -108,14 +177,17 @@ async function iniciarCamara() {
     
   } catch (err) { alert("Error cámara: " + err.message); }
 }
-    function resetearUI() {
-      personaDetectada = null; nombreDetectado = null; enviando = false;
-      if (watchdogTimer) { clearTimeout(watchdogTimer); watchdogTimer = null; }
-      document.getElementById('panel').style.display = "none";
-      document.getElementById('saludo').innerHTML = "Mira a la cámara";
-      document.getElementById('camBox').style.borderColor = "#90a4ae";
-      document.querySelectorAll('button').forEach(b => b.disabled = false);
-    }
+   function resetearUI() {
+  personaDetectada = null; 
+  nombreDetectado = null; 
+  enviando = false;
+  tiempoInactivo = 0; // Reiniciamos el reloj al guardar una marcación
+  document.getElementById('contador-apagado').style.display = "none";
+  document.getElementById('panel').style.display = "none";
+  document.getElementById('saludo').innerHTML = "Mira a la cámara";
+  document.getElementById('camBox').style.borderColor = "#90a4ae";
+  document.querySelectorAll('button').forEach(b => b.disabled = false);
+}
 function programarReinicioDiario() {
   const ahora = new Date();
   const reinicio = new Date();
