@@ -149,23 +149,43 @@
       document.getElementById('saludo').innerHTML = "⌛ GUARDANDO REGISTRO...";
 
       try {
-        await fetch(urlAPI, {
+        const response = await fetch(urlAPI, {
           method: 'POST',
-          mode: 'no-cors',
-          body: JSON.stringify({ cedula: personaDetectada, nombre: nombreDetectado, accion: accion, lat: coords.lat, lon: coords.lon })
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8'
+          },
+          body: JSON.stringify({ 
+            cedula: personaDetectada, 
+            nombre: nombreDetectado, 
+            accion: accion, 
+            lat: coords.lat, 
+            lon: coords.lon 
+          })
         });
-        
-        // MOSTRAR: Nombre Completo al finalizar
-        document.getElementById('saludo').innerHTML = `✅ ¡Listo!<br><b style="font-size:0.9em">${nombreDetectado}</b><br><span style="color:#2e7d32; font-size:0.75em">Registro guardado con éxito.</span>`;
-        document.getElementById('camBox').style.borderColor = "#2e7d32";
-        
-        setTimeout(() => { resetearUI(); }, 3000); // Éxito 3s
+
+        const data = await response.json();
+
+        if (data.status === "ok") {
+          // ÉXITO: Mostramos el mensaje de Apps Script
+          document.getElementById('saludo').innerHTML = `✅ ¡Listo!<br><b style="font-size:0.9em">${nombreDetectado}</b><br><span style="color:#2e7d32; font-size:0.75em">${data.message}</span>`;
+          document.getElementById('camBox').style.borderColor = "#2e7d32";
+          setTimeout(() => { resetearUI(); }, 3000); // Éxito 3s
+        } else {
+          // ERROR CONTROLADO (Ej: Fuera de rango autorizado)
+          document.getElementById('saludo').innerHTML = `⚠️ Atención:<br><span style="color:#c62828; font-size:0.8em">${data.message}</span>`;
+          document.getElementById('camBox').style.borderColor = "#c62828";
+          enviando = false; 
+          document.querySelectorAll('button').forEach(b => b.disabled = false);
+        }
+
       } catch (error) {
-        document.getElementById('saludo').innerHTML = "❌ Error al guardar.";
+        // ERROR DE RED (Sin internet o falla del servidor)
+        document.getElementById('saludo').innerHTML = "❌ Fallo de conexión.";
         enviando = false;
         document.querySelectorAll('button').forEach(b => b.disabled = false);
       }
     }
+    
     iniciar();
   </script>
 </body>
