@@ -94,7 +94,20 @@
         iniciarDeteccion();
       } catch (err) { alert("Error cámara: " + err.message); }
     }
-
+async function iniciarCamara() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+    document.getElementById('video').srcObject = stream;
+    document.getElementById('btnDesbloqueo').style.display = "none";
+    document.getElementById('saludo').innerHTML = "Mira a la cámara";
+    navigator.geolocation.watchPosition(p => { coords.lat = p.coords.latitude; coords.lon = p.coords.longitude; }, null, {enableHighAccuracy: true});
+    iniciarDeteccion();
+    
+    // INICIAMOS EL TEMPORIZADOR DE REINICIO
+    programarReinicioDiario(); 
+    
+  } catch (err) { alert("Error cámara: " + err.message); }
+}
     function resetearUI() {
       personaDetectada = null; nombreDetectado = null; enviando = false;
       if (watchdogTimer) { clearTimeout(watchdogTimer); watchdogTimer = null; }
@@ -103,7 +116,25 @@
       document.getElementById('camBox').style.borderColor = "#90a4ae";
       document.querySelectorAll('button').forEach(b => b.disabled = false);
     }
+function programarReinicioDiario() {
+  const ahora = new Date();
+  const reinicio = new Date();
+  
+  // Configuramos la hora de reinicio a las 3:00 AM
+  reinicio.setHours(3, 0, 0, 0); 
 
+  // Si ya pasaron las 3:00 AM del día de hoy, lo programamos para mañana
+  if (ahora.getTime() > reinicio.getTime()) {
+    reinicio.setDate(reinicio.getDate() + 1);
+  }
+
+  const tiempoFaltante = reinicio.getTime() - ahora.getTime();
+
+  // Programamos la recarga de la página
+  setTimeout(() => {
+    window.location.reload(true); // El 'true' fuerza la recarga desde el servidor, no desde el caché
+  }, tiempoFaltante);
+}
     // --- LÓGICA DE NOMBRES ---
     function obtenerNombreCorto(nombreFull) {
       const partes = nombreFull.trim().split(/\s+/);
