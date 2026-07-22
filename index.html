@@ -205,12 +205,20 @@
     // FUNCIÓN LIMPIA: Se eliminó el watchdogTimer viejo
     function iniciarDeteccion() {
       const video = document.getElementById('video');
+      let ciclosSinRostro = 0; // NUEVO: Contador de ausencia
+
       setInterval(async () => {
         if (enviando || !faceMatcher) return;
         const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+        
+        let rostroValido = false;
+
         if (detection) {
           const match = faceMatcher.findBestMatch(detection.descriptor);
           if (match.label !== 'unknown') {
+            rostroValido = true;
+            ciclosSinRostro = 0; // Resetear porque vemos a alguien
+            
             if (personaDetectada !== match.label) {
               personaDetectada = match.label;
               nombreDetectado = nombresMaestro[match.label];
@@ -220,6 +228,16 @@
               document.getElementById('camBox').style.borderColor = "#2e7d32";
               document.getElementById('panel').style.display = "flex";
             }
+          }
+        }
+
+        // Si te quitas de la cámara o mira alguien que no está registrado
+        if (!rostroValido && personaDetectada) {
+          ciclosSinRostro++;
+          
+          if (ciclosSinRostro >= 10) { // Después de aprox 7 segundos sin ver tu rostro
+            resetearUI(); // Limpia tu nombre de la pantalla
+            ciclosSinRostro = 0;
           }
         }
       }, 700);
