@@ -67,9 +67,8 @@
 
     let faceMatcher = null, nombresMaestro = {}, personaDetectada = null, nombreDetectado = null;
     let coords = { lat: 0, lon: 0 }, enviando = false;
-    let bucleActivo = false; // Control de lectura de cámara
+    let bucleActivo = false; 
     
-    // VARIABLES DEL TEMPORIZADOR
     let tiempoInactivo = 0, timerInterval = null;
     const TIEMPO_MAXIMO_SEG = 45;
 
@@ -95,7 +94,6 @@
       }, 1000); 
     }
 
-    // ⚡ FUNCIÓN DE CARGA DE MODELOS (AHORA CON MEMORIA CACHÉ)
     function prepararModelosDeRostros(modelos) {
       nombresMaestro = {};
       modelos.forEach(m => nombresMaestro[m.cedula] = m.nombre);
@@ -108,19 +106,17 @@
     async function iniciar() {
       const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
       try {
-        // Carga de modelos ultraligeros para móvil (TinyFaceDetector)
-        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        // REGRESAMOS AL MODELO INTELIGENTE (SSD MobileNet V1) PARA NO PERDER PRECISIÓN
+        await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
         await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
         await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 
-        // 1. Intentar iniciar con la caché local de la tablet (Arranque ultra rápido)
         const modelosEnCache = localStorage.getItem('sisma_modelos');
         if (modelosEnCache) {
           prepararModelosDeRostros(JSON.parse(modelosEnCache));
           document.getElementById('status-init').innerText = "⚡ SISMA CONECTADO (MEMORIA)";
         }
 
-        // 2. Traer datos frescos de Google en segundo plano
         fetch(`${urlAPI}?action=obtenerModelos`, { redirect: 'follow' })
           .then(res => res.json())
           .then(modelos => {
@@ -137,7 +133,7 @@
 
     async function iniciarCamara() {
       try {
-        // REDUCCIÓN DE RESOLUCIÓN PARA LIBERAR PROCESADOR EN iPHONE/ANDROID (480x360 es ideal)
+        // MANTENEMOS LA CÁMARA LIGERA PARA QUE NO SE TRABE EL CELULAR
         const stream = await navigator.mediaDevices.getUserMedia({ 
           video: { facingMode: "user", width: { ideal: 480 }, height: { ideal: 360 } } 
         });
@@ -196,19 +192,19 @@
       return partes[0] + (partes[1] ? " " + partes[1] : "");
     }
 
-    // 🧠 BUCLE INTELIGENTE SECUENCIAL (ELIMINA EL CUELLO DE BOTELLA)
     function iniciarDeteccionOptimizada() {
       const video = document.getElementById('video');
       let ciclosSinRostro = 0;
       
-      // Opciones para la IA ligera: inputSize de 224 y umbral de 0.5
-      const tinyOpciones = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+      // OPCIONES PARA SSD MOBILENET: Mantenemos tu precisión original
+      const opcionesIA = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 });
 
       async function procesarFrame() {
         if (!bucleActivo || enviando || !faceMatcher || !video.srcObject) return;
 
         try {
-          const detection = await faceapi.detectSingleFace(video, tinyOpciones).withFaceLandmarks().withFaceDescriptor();
+          // LLAMAMOS AL MODELO INTELIGENTE QUE RECONOCE HASTA CON GORRA
+          const detection = await faceapi.detectSingleFace(video, opcionesIA).withFaceLandmarks().withFaceDescriptor();
           let rostroValido = false;
 
           if (detection) {
@@ -240,13 +236,13 @@
           console.warn("Fallo lectura de cuadro", e);
         }
 
-        // LLAMADA RECURSIVA: Solo analiza el siguiente rostro cuando terminó el anterior
+        // EL BUCLE SECUENCIAL GARANTIZA QUE EL CELULAR NUNCA SE CONGELE
         if (bucleActivo) {
-          setTimeout(procesarFrame, 400); // Descansa 400ms entre lecturas para no calentar la tablet
+          setTimeout(procesarFrame, 300); 
         }
       }
 
-      procesarFrame(); // Iniciar bucle
+      procesarFrame(); 
     }
 
     async function registrar(accion) {
