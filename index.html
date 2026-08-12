@@ -6,7 +6,6 @@
   <title>SISMA - Agro Jabar</title>
   <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
   <style>
-    /* RESET Y BASES RESPONSIVAS */
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { font-family: 'Segoe UI', system-ui, sans-serif; text-align: center; background: #cfd8dc; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
     
@@ -106,12 +105,13 @@
     async function iniciar() {
       const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
       try {
-        // REGRESAMOS AL MODELO INTELIGENTE (SSD MobileNet V1) PARA NO PERDER PRECISIÓN
+        // MANTENEMOS EL MODELO ORIGINAL SSD MOBILENET V1 (EL MÁS PRECISO)
         await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
         await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
         await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 
-        const modelosEnCache = localStorage.getItem('sisma_modelos');
+        // CAMBIO DE NOMBRE A LA CACHÉ PARA FORZAR A BORRAR LA BASURA ANTERIOR
+        const modelosEnCache = localStorage.getItem('sisma_modelos_v2');
         if (modelosEnCache) {
           prepararModelosDeRostros(JSON.parse(modelosEnCache));
           document.getElementById('status-init').innerText = "⚡ SISMA CONECTADO (MEMORIA)";
@@ -120,7 +120,7 @@
         fetch(`${urlAPI}?action=obtenerModelos`, { redirect: 'follow' })
           .then(res => res.json())
           .then(modelos => {
-            localStorage.setItem('sisma_modelos', JSON.stringify(modelos));
+            localStorage.setItem('sisma_modelos_v2', JSON.stringify(modelos));
             if (!modelosEnCache) prepararModelosDeRostros(modelos);
             document.getElementById('status-init').innerText = "✅ SISMA SINCRONIZADO";
           })
@@ -133,19 +133,22 @@
 
     async function iniciarCamara() {
       try {
-        // MANTENEMOS LA CÁMARA LIGERA PARA QUE NO SE TRABE EL CELULAR
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: "user", width: { ideal: 480 }, height: { ideal: 360 } } 
-        });
-        document.getElementById('video').srcObject = stream;
+        // REGRESAMOS A TU CONFIGURACIÓN DE CÁMARA ORIGINAL (SIN CORTAR RESOLUCIÓN)
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        const video = document.getElementById('video');
+        video.srcObject = stream;
         document.getElementById('btnDesbloqueo').style.display = "none";
         document.getElementById('saludo').innerHTML = "Mira a la cámara";
         navigator.geolocation.watchPosition(p => { coords.lat = p.coords.latitude; coords.lon = p.coords.longitude; }, null, {enableHighAccuracy: true});
         
-        bucleActivo = true;
-        iniciarDeteccionOptimizada();
-        gestionarInactividad(); 
-        programarReinicioDiario(); 
+        // ESPERAMOS A QUE LA CÁMARA ABRA BIEN ANTES DE DISPARAR LA IA
+        video.onloadedmetadata = () => {
+          video.play();
+          bucleActivo = true;
+          iniciarDeteccionOptimizada();
+          gestionarInactividad(); 
+          programarReinicioDiario(); 
+        };
         
       } catch (err) { alert("Error cámara: " + err.message); }
     }
@@ -195,16 +198,13 @@
     function iniciarDeteccionOptimizada() {
       const video = document.getElementById('video');
       let ciclosSinRostro = 0;
-      
-      // OPCIONES PARA SSD MOBILENET: Mantenemos tu precisión original
-      const opcionesIA = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 });
 
       async function procesarFrame() {
         if (!bucleActivo || enviando || !faceMatcher || !video.srcObject) return;
 
         try {
-          // LLAMAMOS AL MODELO INTELIGENTE QUE RECONOCE HASTA CON GORRA
-          const detection = await faceapi.detectSingleFace(video, opcionesIA).withFaceLandmarks().withFaceDescriptor();
+          // BÚSQUEDA ORIGINAL DE ROSTROS
+          const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
           let rostroValido = false;
 
           if (detection) {
@@ -236,9 +236,9 @@
           console.warn("Fallo lectura de cuadro", e);
         }
 
-        // EL BUCLE SECUENCIAL GARANTIZA QUE EL CELULAR NUNCA SE CONGELE
+        // CON ESTO SE EVITA EL CONGELAMIENTO EN IPHONE Y ANDROID
         if (bucleActivo) {
-          setTimeout(procesarFrame, 300); 
+          setTimeout(procesarFrame, 500); // Lee la cara, descansa medio segundo, y vuelve a leer
         }
       }
 
