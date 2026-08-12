@@ -35,25 +35,15 @@
     
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
     #contador-apagado { 
-  display: none; 
-  background: #c62828; /* Rojo alerta */
-  color: white; 
-  padding: 8px 20px; 
-  border-radius: 15px; 
-  font-weight: 800; 
-  font-size: 0.9rem; 
-  margin-top: -15px; 
-  margin-bottom: 15px;
-  z-index: 10;
-  animation: pulse 1s infinite; 
-}
-@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+      display: none; background: #c62828; color: white; padding: 8px 20px; border-radius: 15px; font-weight: 800; font-size: 0.9rem; margin-top: -15px; margin-bottom: 15px; z-index: 10; animation: pulse 1s infinite; 
+    }
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
   </style>
 </head>
 <body>
 
-  <div id="status-init">⚙️ SISMA SIGET-P v2.2</div>
-  <div id="saludo">Sincronizando con SISMA...</div>
+  <div id="status-init">⚙️ INICIANDO SISTEMA...</div>
+  <div id="saludo">Conectando a bases de datos...</div>
   
   <button id="btnDesbloqueo" onclick="iniciarCamara()">📷 ENCENDER CÁMARA</button>
 
@@ -77,10 +67,10 @@
 
     let faceMatcher = null, nombresMaestro = {}, personaDetectada = null, nombreDetectado = null;
     let coords = { lat: 0, lon: 0 }, enviando = false;
+    let bucleActivo = false; // Control de lectura de cámara
     
     // VARIABLES DEL TEMPORIZADOR
-    let tiempoInactivo = 0;
-    let timerInterval = null;
+    let tiempoInactivo = 0, timerInterval = null;
     const TIEMPO_MAXIMO_SEG = 45;
 
     function gestionarInactividad() {
@@ -94,7 +84,6 @@
           document.getElementById('contador-apagado').style.display = "none";
           return;
         }
-
         tiempoInactivo++;
         const tiempoRestante = TIEMPO_MAXIMO_SEG - tiempoInactivo;
 
@@ -102,43 +91,63 @@
           document.getElementById('contador-apagado').style.display = "block";
           document.getElementById('contador-apagado').innerText = `Cerrando cámara en ${tiempoRestante}s...`;
         }
-
-        if (tiempoRestante <= 0) {
-          apagarCamara();
-        }
+        if (tiempoRestante <= 0) apagarCamara();
       }, 1000); 
+    }
+
+    // ⚡ FUNCIÓN DE CARGA DE MODELOS (AHORA CON MEMORIA CACHÉ)
+    function prepararModelosDeRostros(modelos) {
+      nombresMaestro = {};
+      modelos.forEach(m => nombresMaestro[m.cedula] = m.nombre);
+      faceMatcher = new faceapi.FaceMatcher(modelos.map(m => new faceapi.LabeledFaceDescriptors(m.cedula, [new Float32Array(m.descriptor)])), 0.55);
+      
+      document.getElementById('saludo').innerHTML = "Sistema listo.<br>Toca el botón azul.";
+      document.getElementById('btnDesbloqueo').style.display = "block";
     }
 
     async function iniciar() {
       const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
       try {
-        await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+        // Carga de modelos ultraligeros para móvil (TinyFaceDetector)
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
         await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
         await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 
-        const res = await fetch(`${urlAPI}?action=obtenerModelos`, { redirect: 'follow' });
-        const modelos = await res.json();
-        modelos.forEach(m => nombresMaestro[m.cedula] = m.nombre);
-        faceMatcher = new faceapi.FaceMatcher(modelos.map(m => new faceapi.LabeledFaceDescriptors(m.cedula, [new Float32Array(m.descriptor)])), 0.55);
+        // 1. Intentar iniciar con la caché local de la tablet (Arranque ultra rápido)
+        const modelosEnCache = localStorage.getItem('sisma_modelos');
+        if (modelosEnCache) {
+          prepararModelosDeRostros(JSON.parse(modelosEnCache));
+          document.getElementById('status-init').innerText = "⚡ SISMA CONECTADO (MEMORIA)";
+        }
 
-        document.getElementById('status-init').innerText = "SISMA CONECTADO ✅";
-        document.getElementById('saludo').innerHTML = "Sistema listo.<br>Toca el botón azul.";
-        document.getElementById('btnDesbloqueo').style.display = "block";
+        // 2. Traer datos frescos de Google en segundo plano
+        fetch(`${urlAPI}?action=obtenerModelos`, { redirect: 'follow' })
+          .then(res => res.json())
+          .then(modelos => {
+            localStorage.setItem('sisma_modelos', JSON.stringify(modelos));
+            if (!modelosEnCache) prepararModelosDeRostros(modelos);
+            document.getElementById('status-init').innerText = "✅ SISMA SINCRONIZADO";
+          })
+          .catch(err => console.log("Caché utilizada por fallo de red"));
+
       } catch (e) {
-        document.getElementById('saludo').innerHTML = "❌ Error de sincronización.<br>Revisa tu conexión.";
+        document.getElementById('saludo').innerHTML = "❌ Error al cargar IA.<br>Verifica internet.";
       }
     }
 
-    // FUNCIÓN UNIFICADA: Enciende hardware, geolocalización, detección, cronómetro inactividad y reinicio diario
     async function iniciarCamara() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        // REDUCCIÓN DE RESOLUCIÓN PARA LIBERAR PROCESADOR EN iPHONE/ANDROID (480x360 es ideal)
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: "user", width: { ideal: 480 }, height: { ideal: 360 } } 
+        });
         document.getElementById('video').srcObject = stream;
         document.getElementById('btnDesbloqueo').style.display = "none";
         document.getElementById('saludo').innerHTML = "Mira a la cámara";
         navigator.geolocation.watchPosition(p => { coords.lat = p.coords.latitude; coords.lon = p.coords.longitude; }, null, {enableHighAccuracy: true});
         
-        iniciarDeteccion();
+        bucleActivo = true;
+        iniciarDeteccionOptimizada();
         gestionarInactividad(); 
         programarReinicioDiario(); 
         
@@ -146,6 +155,7 @@
     }
 
     function apagarCamara() {
+      bucleActivo = false;
       const video = document.getElementById('video');
       
       if (video.srcObject) {
@@ -160,16 +170,11 @@
       document.getElementById('saludo').innerHTML = "Sistema en reposo.<br>Toca para iniciar.";
       document.getElementById('camBox').style.borderColor = "#90a4ae";
       
-      personaDetectada = null; 
-      nombreDetectado = null; 
-      enviando = false;
+      personaDetectada = null; nombreDetectado = null; enviando = false;
     }    
 
     function resetearUI() {
-      personaDetectada = null; 
-      nombreDetectado = null; 
-      enviando = false;
-      tiempoInactivo = 0; 
+      personaDetectada = null; nombreDetectado = null; enviando = false; tiempoInactivo = 0; 
       document.getElementById('contador-apagado').style.display = "none";
       document.getElementById('panel').style.display = "none";
       document.getElementById('saludo').innerHTML = "Mira a la cámara";
@@ -180,67 +185,68 @@
     function programarReinicioDiario() {
       const ahora = new Date();
       const reinicio = new Date();
-      
       reinicio.setHours(3, 0, 0, 0); 
-
-      if (ahora.getTime() > reinicio.getTime()) {
-        reinicio.setDate(reinicio.getDate() + 1);
-      }
-
-      const tiempoFaltante = reinicio.getTime() - ahora.getTime();
-
-      setTimeout(() => {
-        window.location.reload(true); 
-      }, tiempoFaltante);
+      if (ahora.getTime() > reinicio.getTime()) reinicio.setDate(reinicio.getDate() + 1);
+      setTimeout(() => { window.location.reload(true); }, reinicio.getTime() - ahora.getTime());
     }
 
     function obtenerNombreCorto(nombreFull) {
       const partes = nombreFull.trim().split(/\s+/);
-      if (partes.length >= 3) {
-        return partes[0] + " " + partes[2];
-      } 
+      if (partes.length >= 3) return partes[0] + " " + partes[2];
       return partes[0] + (partes[1] ? " " + partes[1] : "");
     }
 
-    // FUNCIÓN LIMPIA: Se eliminó el watchdogTimer viejo
-    function iniciarDeteccion() {
+    // 🧠 BUCLE INTELIGENTE SECUENCIAL (ELIMINA EL CUELLO DE BOTELLA)
+    function iniciarDeteccionOptimizada() {
       const video = document.getElementById('video');
-      let ciclosSinRostro = 0; // NUEVO: Contador de ausencia
+      let ciclosSinRostro = 0;
+      
+      // Opciones para la IA ligera: inputSize de 224 y umbral de 0.5
+      const tinyOpciones = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
 
-      setInterval(async () => {
-        if (enviando || !faceMatcher) return;
-        const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
-        
-        let rostroValido = false;
+      async function procesarFrame() {
+        if (!bucleActivo || enviando || !faceMatcher || !video.srcObject) return;
 
-        if (detection) {
-          const match = faceMatcher.findBestMatch(detection.descriptor);
-          if (match.label !== 'unknown') {
-            rostroValido = true;
-            ciclosSinRostro = 0; // Resetear porque vemos a alguien
-            
-            if (personaDetectada !== match.label) {
-              personaDetectada = match.label;
-              nombreDetectado = nombresMaestro[match.label];
+        try {
+          const detection = await faceapi.detectSingleFace(video, tinyOpciones).withFaceLandmarks().withFaceDescriptor();
+          let rostroValido = false;
+
+          if (detection) {
+            const match = faceMatcher.findBestMatch(detection.descriptor);
+            if (match.label !== 'unknown') {
+              rostroValido = true;
+              ciclosSinRostro = 0; 
               
-              const nombreCorto = obtenerNombreCorto(nombreDetectado);
-              document.getElementById('saludo').innerHTML = `¡Hola, <b>${nombreCorto}</b>! 👋<br><span style="font-size:0.7em; font-weight:normal">¿Qué vas a registrar hoy?</span>`;
-              document.getElementById('camBox').style.borderColor = "#2e7d32";
-              document.getElementById('panel').style.display = "flex";
+              if (personaDetectada !== match.label) {
+                personaDetectada = match.label;
+                nombreDetectado = nombresMaestro[match.label];
+                
+                const nombreCorto = obtenerNombreCorto(nombreDetectado);
+                document.getElementById('saludo').innerHTML = `¡Hola, <b>${nombreCorto}</b>! 👋<br><span style="font-size:0.7em; font-weight:normal">¿Qué vas a registrar hoy?</span>`;
+                document.getElementById('camBox').style.borderColor = "#2e7d32";
+                document.getElementById('panel').style.display = "flex";
+              }
             }
           }
+
+          if (!rostroValido && personaDetectada) {
+            ciclosSinRostro++;
+            if (ciclosSinRostro >= 10) { 
+              resetearUI(); 
+              ciclosSinRostro = 0;
+            }
+          }
+        } catch (e) {
+          console.warn("Fallo lectura de cuadro", e);
         }
 
-        // Si te quitas de la cámara o mira alguien que no está registrado
-        if (!rostroValido && personaDetectada) {
-          ciclosSinRostro++;
-          
-          if (ciclosSinRostro >= 10) { // Después de aprox 7 segundos sin ver tu rostro
-            resetearUI(); // Limpia tu nombre de la pantalla
-            ciclosSinRostro = 0;
-          }
+        // LLAMADA RECURSIVA: Solo analiza el siguiente rostro cuando terminó el anterior
+        if (bucleActivo) {
+          setTimeout(procesarFrame, 400); // Descansa 400ms entre lecturas para no calentar la tablet
         }
-      }, 700);
+      }
+
+      procesarFrame(); // Iniciar bucle
     }
 
     async function registrar(accion) {
@@ -252,15 +258,10 @@
       try {
         const response = await fetch(urlAPI, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'text/plain;charset=utf-8'
-          },
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ 
-            cedula: personaDetectada, 
-            nombre: nombreDetectado, 
-            accion: accion, 
-            lat: coords.lat, 
-            lon: coords.lon 
+            cedula: personaDetectada, nombre: nombreDetectado, accion: accion, 
+            lat: coords.lat, lon: coords.lon 
           })
         });
 
