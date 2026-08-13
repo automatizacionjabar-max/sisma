@@ -6,6 +6,7 @@
   <title>SISMA - Agro Jabar</title>
   <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
   <style>
+    /* RESET Y BASES RESPONSIVAS */
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { font-family: 'Segoe UI', system-ui, sans-serif; text-align: center; background: #cfd8dc; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
     
@@ -34,9 +35,19 @@
     
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
     #contador-apagado { 
-      display: none; background: #c62828; color: white; padding: 8px 20px; border-radius: 15px; font-weight: 800; font-size: 0.9rem; margin-top: -15px; margin-bottom: 15px; z-index: 10; animation: pulse 1s infinite; 
-    }
-    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+  display: none; 
+  background: #c62828; /* Rojo alerta */
+  color: white; 
+  padding: 8px 20px; 
+  border-radius: 15px; 
+  font-weight: 800; 
+  font-size: 0.9rem; 
+  margin-top: -15px; 
+  margin-bottom: 15px;
+  z-index: 10;
+  animation: pulse 1s infinite; 
+}
+@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
   </style>
 </head>
 <body>
@@ -67,6 +78,7 @@
     let faceMatcher = null, nombresMaestro = {}, personaDetectada = null, nombreDetectado = null;
     let coords = { lat: 0, lon: 0 }, enviando = false;
     
+    // VARIABLES DEL TEMPORIZADOR
     let tiempoInactivo = 0;
     let timerInterval = null;
     const TIEMPO_MAXIMO_SEG = 45;
@@ -104,49 +116,20 @@
         await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
         await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 
-        const modelosCache = localStorage.getItem('sisma_rostros_v4');
-        
-        if (modelosCache) {
-          const modelos = JSON.parse(modelosCache);
-          if(modelos.length > 0) {
-             modelos.forEach(m => nombresMaestro[m.cedula] = m.nombre);
-             faceMatcher = new faceapi.FaceMatcher(modelos.map(m => new faceapi.LabeledFaceDescriptors(m.cedula, [new Float32Array(m.descriptor)])), 0.55);
-             
-             document.getElementById('status-init').innerText = "SISMA CONECTADO ⚡ (Caché)";
-             document.getElementById('saludo').innerHTML = "Sistema listo.<br>Toca el botón azul.";
-             document.getElementById('btnDesbloqueo').style.display = "block";
-          }
-          
-          fetch(`${urlAPI}?action=obtenerModelos`, { redirect: 'follow' })
-            .then(res => res.json())
-            .then(data => {
-              if(data.length > 0) localStorage.setItem('sisma_rostros_v4', JSON.stringify(data));
-            }).catch(e => console.log("Caché de fondo falló", e));
+        const res = await fetch(`${urlAPI}?action=obtenerModelos`, { redirect: 'follow' });
+        const modelos = await res.json();
+        modelos.forEach(m => nombresMaestro[m.cedula] = m.nombre);
+        faceMatcher = new faceapi.FaceMatcher(modelos.map(m => new faceapi.LabeledFaceDescriptors(m.cedula, [new Float32Array(m.descriptor)])), 0.55);
 
-        } else {
-          const res = await fetch(`${urlAPI}?action=obtenerModelos`, { redirect: 'follow' });
-          const modelos = await res.json();
-          
-          if (!modelos || modelos.length === 0) {
-             document.getElementById('saludo').innerHTML = "⚠️ No hay rostros registrados en el sistema.";
-             return;
-          }
-
-          localStorage.setItem('sisma_rostros_v4', JSON.stringify(modelos));
-          
-          modelos.forEach(m => nombresMaestro[m.cedula] = m.nombre);
-          faceMatcher = new faceapi.FaceMatcher(modelos.map(m => new faceapi.LabeledFaceDescriptors(m.cedula, [new Float32Array(m.descriptor)])), 0.55);
-
-          document.getElementById('status-init').innerText = "SISMA CONECTADO ✅";
-          document.getElementById('saludo').innerHTML = "Sistema listo.<br>Toca el botón azul.";
-          document.getElementById('btnDesbloqueo').style.display = "block";
-        }
-
+        document.getElementById('status-init').innerText = "SISMA CONECTADO ✅";
+        document.getElementById('saludo').innerHTML = "Sistema listo.<br>Toca el botón azul.";
+        document.getElementById('btnDesbloqueo').style.display = "block";
       } catch (e) {
-        document.getElementById('saludo').innerHTML = "❌ Error de sincronización.<br>Revisa tu conexión o refresca la página.";
+        document.getElementById('saludo').innerHTML = "❌ Error de sincronización.<br>Revisa tu conexión.";
       }
     }
 
+    // FUNCIÓN UNIFICADA: Enciende hardware, geolocalización, detección, cronómetro inactividad y reinicio diario
     async function iniciarCamara() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
@@ -219,9 +202,10 @@
       return partes[0] + (partes[1] ? " " + partes[1] : "");
     }
 
+    // FUNCIÓN LIMPIA: Se eliminó el watchdogTimer viejo
     function iniciarDeteccion() {
       const video = document.getElementById('video');
-      let ciclosSinRostro = 0;
+      let ciclosSinRostro = 0; // NUEVO: Contador de ausencia
 
       setInterval(async () => {
         if (enviando || !faceMatcher) return;
@@ -233,7 +217,7 @@
           const match = faceMatcher.findBestMatch(detection.descriptor);
           if (match.label !== 'unknown') {
             rostroValido = true;
-            ciclosSinRostro = 0; 
+            ciclosSinRostro = 0; // Resetear porque vemos a alguien
             
             if (personaDetectada !== match.label) {
               personaDetectada = match.label;
@@ -247,11 +231,12 @@
           }
         }
 
+        // Si te quitas de la cámara o mira alguien que no está registrado
         if (!rostroValido && personaDetectada) {
           ciclosSinRostro++;
           
-          if (ciclosSinRostro >= 10) { 
-            resetearUI(); 
+          if (ciclosSinRostro >= 10) { // Después de aprox 7 segundos sin ver tu rostro
+            resetearUI(); // Limpia tu nombre de la pantalla
             ciclosSinRostro = 0;
           }
         }
