@@ -283,7 +283,7 @@
         document.getElementById('saludo').innerHTML = `✅ ¡Gracias!<br><b style="font-size:0.9em">${nombreDetectado}</b><br><span style="color:#2e7d32; font-size:0.75em">Registro guardado</span>`;
         document.getElementById('camBox').style.borderColor = "#2e7d32";
         
-        setTimeout(() => { resetearUI(); }, 2500); 
+        setTimeout(() => { resetearUI(); }, 4500); 
 
       } catch (error) {
         document.getElementById('saludo').innerHTML = "❌ Error de guardado: " + error.message;
