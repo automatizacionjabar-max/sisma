@@ -150,7 +150,7 @@
             }).catch(e => console.log("Caché de fondo falló", e));
 
         } else {
-          document.getElementById('saludo').innerHTML = "Descargando rostros de Sheets...";
+          document.getElementById('saludo').innerHTML = "Actualizando Modelos Faciales...";
           const res = await fetch(`${urlAPI}?action=obtenerModelos`, { redirect: 'follow' });
           const modelos = await res.json();
           
@@ -163,7 +163,7 @@
           modelos.forEach(m => nombresMaestro[m.cedula] = m.nombre);
           faceMatcher = new faceapi.FaceMatcher(modelos.map(m => new faceapi.LabeledFaceDescriptors(m.cedula, [new Float32Array(m.descriptor)])), 0.55);
 
-          document.getElementById('status-init').innerText = "V3 CONECTADO ✅";
+          document.getElementById('status-init').innerText = "SISMA V3 CONECTADO ✅";
           document.getElementById('saludo').innerHTML = "Sistema listo.<br>Toca el botón azul.";
           document.getElementById('btnDesbloqueo').style.display = "block";
         }
