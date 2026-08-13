@@ -116,14 +116,36 @@
         await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
         await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 
-        const res = await fetch(`${urlAPI}?action=obtenerModelos`, { redirect: 'follow' });
-        const modelos = await res.json();
-        modelos.forEach(m => nombresMaestro[m.cedula] = m.nombre);
-        faceMatcher = new faceapi.FaceMatcher(modelos.map(m => new faceapi.LabeledFaceDescriptors(m.cedula, [new Float32Array(m.descriptor)])), 0.55);
+        // --- OPTIMIZACIÓN: Carga ultra rápida desde la caché del celular ---
+        const modelosCache = localStorage.getItem('sisma_rostros_v3');
+        if (modelosCache) {
+          const modelos = JSON.parse(modelosCache);
+          modelos.forEach(m => nombresMaestro[m.cedula] = m.nombre);
+          faceMatcher = new faceapi.FaceMatcher(modelos.map(m => new faceapi.LabeledFaceDescriptors(m.cedula, [new Float32Array(m.descriptor)])), 0.55);
+          
+          document.getElementById('status-init').innerText = "SISMA CONECTADO ⚡ (Caché)";
+          document.getElementById('saludo').innerHTML = "Sistema listo.<br>Toca el botón azul.";
+          document.getElementById('btnDesbloqueo').style.display = "block";
+        }
 
-        document.getElementById('status-init').innerText = "SISMA CONECTADO ✅";
-        document.getElementById('saludo').innerHTML = "Sistema listo.<br>Toca el botón azul.";
-        document.getElementById('btnDesbloqueo').style.display = "block";
+        // --- OPTIMIZACIÓN: Actualiza datos en segundo plano sin bloquear la pantalla ---
+        fetch(`${urlAPI}?action=obtenerModelos`, { redirect: 'follow' })
+          .then(res => res.json())
+          .then(modelos => {
+            localStorage.setItem('sisma_rostros_v3', JSON.stringify(modelos));
+            
+            // Si la caché estaba vacía, ahora sí armamos el sistema y habilitamos botones
+            if (!modelosCache) {
+              modelos.forEach(m => nombresMaestro[m.cedula] = m.nombre);
+              faceMatcher = new faceapi.FaceMatcher(modelos.map(m => new faceapi.LabeledFaceDescriptors(m.cedula, [new Float32Array(m.descriptor)])), 0.55);
+              
+              document.getElementById('status-init').innerText = "SISMA CONECTADO ✅";
+              document.getElementById('saludo').innerHTML = "Sistema listo.<br>Toca el botón azul.";
+              document.getElementById('btnDesbloqueo').style.display = "block";
+            }
+          })
+          .catch(e => console.log("Caché utilizada debido a red lenta"));
+
       } catch (e) {
         document.getElementById('saludo').innerHTML = "❌ Error de sincronización.<br>Revisa tu conexión.";
       }
