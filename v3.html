@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>SISMA V3 - Pruebas Firebase</title>
+  <title>SISMA V3 - Agro Jabar - Agroversalles</title>
   
   <!-- LIBRERÍAS DE INTELIGENCIA ARTIFICIAL -->
   <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
@@ -48,8 +48,8 @@
 </head>
 <body>
 
-  <div id="status-init">⚙️ SISMA V3 (TEST)</div>
-  <div id="saludo">Conectando a Firebase...</div>
+  <div id="status-init">⚙️ SISMA V3 </div>
+  <div id="saludo">Conectando a Base de Datos...</div>
   
   <button id="btnDesbloqueo" onclick="iniciarCamara()">📷 ENCENDER CÁMARA</button>
 
@@ -67,7 +67,7 @@
     <button class="btn-mevoy" onclick="registrar('ME VOY A CASA')">🏠 ME VOY A CASA</button>
   </div>
 
-  <div class="sisma-logo">SISMA V3 | AGRO JABAR SAS</div>
+  <div class="sisma-logo">SISMA V3 | AGRO JABAR SAS - AGROVERSALLES SAS</div>
 <script>
     // --- 1. CONFIGURACIÓN DE FIREBASE (Camuflada contra el robot de GitHub) ---
     const parte1 = "AIzaSyA0l1K0c";
@@ -125,7 +125,7 @@
     async function iniciar() {
       const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
       try {
-        document.getElementById('saludo').innerHTML = "Cargando IA Facial...";
+        document.getElementById('saludo').innerHTML = "Cargando Reconocimiento Facial...";
         await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
         await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
         await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
@@ -138,7 +138,7 @@
              modelos.forEach(m => nombresMaestro[m.cedula] = m.nombre);
              faceMatcher = new faceapi.FaceMatcher(modelos.map(m => new faceapi.LabeledFaceDescriptors(m.cedula, [new Float32Array(m.descriptor)])), 0.55);
              
-             document.getElementById('status-init').innerText = "V3 CONECTADO ⚡ (Caché)";
+             document.getElementById('status-init').innerText = " SISMA V3 CONECTADO ";
              document.getElementById('saludo').innerHTML = "Sistema listo.<br>Toca el botón azul.";
              document.getElementById('btnDesbloqueo').style.display = "block";
           }
@@ -276,7 +276,7 @@
           fecha_hora: firebase.firestore.FieldValue.serverTimestamp() 
         });
 
-        document.getElementById('saludo').innerHTML = `✅ ¡Súper Rápido!<br><b style="font-size:0.9em">${nombreDetectado}</b><br><span style="color:#2e7d32; font-size:0.75em">Registro V3 guardado</span>`;
+        document.getElementById('saludo').innerHTML = `✅ ¡Súper Rápido!<br><b style="font-size:0.9em">${nombreDetectado}</b><br><span style="color:#2e7d32; font-size:0.75em">Registro guardado</span>`;
         document.getElementById('camBox').style.borderColor = "#2e7d32";
         
         setTimeout(() => { resetearUI(); }, 2500); 
