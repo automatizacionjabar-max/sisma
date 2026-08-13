@@ -83,9 +83,13 @@
       appId: "1:559975000373:web:e07e29454ee06f6b50047c"
     };
     
-    try {
+  try {
       firebase.initializeApp(firebaseConfig);
       window.db = firebase.firestore();
+      
+      // ESTA ES LA LÍNEA NUEVA QUE ENCIENDE EL MODO OFFLINE ⚡
+      window.db.enablePersistence().catch(err => console.log("Error offline:", err));
+      
     } catch(err) {
       document.getElementById('saludo').innerHTML = "❌ Error interno Firebase: " + err.message;
     }
