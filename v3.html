@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SISMA V3 - Pruebas Firebase</title>
+  
+  <!-- LIBRERÍAS DE INTELIGENCIA ARTIFICIAL -->
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  
+  <!-- LIBRERÍAS DE FIREBASE (Bóveda de alta velocidad) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; text-align: center; background: #cfd8dc; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+    
+    #status-init { font-size: 12px; color: #455a64; margin: 5px 0; text-transform: uppercase; font-weight: 800; letter-spacing: 1px; }
+    #saludo { font-size: clamp(1.1rem, 4.5vw, 1.5rem); color: #1a237e; margin: 10px 0; min-height: 90px; font-weight: 800; display: flex; align-items: center; justify-content: center; padding: 0 10px; line-height: 1.2; }
+
+    .camera-box { width: 100%; max-width: 420px; aspect-ratio: 4/3; border-radius: 25px; background: #000; overflow: hidden; position: relative; border: 6px solid #90a4ae; box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+    #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+    
+    .panel-acciones { display: none; flex-direction: column; gap: 12px; width: 100%; max-width: 420px; margin-top: 20px; animation: fadeInUp 0.4s ease-out; }
+    
+    button { width: 100%; border: none; color: white; padding: 22px 10px; border-radius: 18px; font-size: clamp(0.9rem, 3.8vw, 1.2rem); font-weight: 800; cursor: pointer; box-shadow: 0 5px 10px rgba(0,0,0,0.2); transition: transform 0.1s; text-transform: uppercase; }
+    button:active { transform: scale(0.97); }
+    button:disabled { background: #b0bec5 !important; opacity: 0.7; }
+    
+    .btn-llegue { background: #2e7d32; }
+    .btn-salgo { background: #ef6c00; }
+    .btn-vuelvo { background: #0277bd; }
+    .btn-mevoy { background: #c62828; }
+    
+    .fila-doble { display: flex; gap: 12px; width: 100%; }
+    .fila-doble button { flex: 1; padding: 25px 5px; }
+
+    #btnDesbloqueo { display: none; width: 100%; max-width: 420px; background: #1a237e; margin-top: 10px; }
+    .sisma-logo { font-size: 11px; color: #546e7a; margin-top: auto; padding: 20px 0; font-weight: bold; }
+    
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    #contador-apagado { 
+      display: none; background: #c62828; color: white; padding: 8px 20px; border-radius: 15px; font-weight: 800; font-size: 0.9rem; margin-top: -15px; margin-bottom: 15px; z-index: 10; animation: pulse 1s infinite; 
+    }
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+  </style>
+</head>
+<body>
+
+  <div id="status-init">⚙️ SISMA V3 (TEST)</div>
+  <div id="saludo">Conectando a Firebase...</div>
+  
+  <button id="btnDesbloqueo" onclick="iniciarCamara()">📷 ENCENDER CÁMARA</button>
+
+  <div class="camera-box" id="camBox">
+    <video id="video" autoplay muted playsinline></video>
+  </div>
+  <div id="contador-apagado"></div>
+
+  <div id="panel" class="panel-acciones">
+    <button class="btn-llegue" onclick="registrar('LLEGUE A TRABAJAR')">☀️ LLEGUE A TRABAJAR</button>
+    <div class="fila-doble">
+      <button class="btn-salgo" onclick="registrar('SALGO A COMER')">🍴 SALGO A COMER</button>
+      <button class="btn-vuelvo" onclick="registrar('VOLVI DE COMER')">↩️ VOLVÍ DE COMER</button>
+    </div>
+    <button class="btn-mevoy" onclick="registrar('ME VOY A CASA')">🏠 ME VOY A CASA</button>
+  </div>
+
+  <div class="sisma-logo">SISMA V3 | AGRO JABAR SAS</div>
+<script>
+    // --- 1. CONFIGURACIÓN DE FIREBASE ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0l1K0cdGo6SqFTC7-snVwrfvVDOW5RtA",
+      authDomain: "sisma-agrojabar.firebaseapp.com",
+      projectId: "sisma-agrojabar",
+      storageBucket: "sisma-agrojabar.firebasestorage.app",
+      messagingSenderId: "559975000373",
+      appId: "1:559975000373:web:e07e29454ee06f6b50047c"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    // ------------------------------------
+
+    const urlAPI = 'https://script.google.com/macros/s/AKfycbwrYa6IE4Yl0nRm865qJFTE7DOlTaVshWCGX5HMuuCrnsqscWHezXvwqZyAlUzc_ROD/exec';
+
+    let faceMatcher = null, nombresMaestro = {}, personaDetectada = null, nombreDetectado = null;
+    let coords = { lat: 0, lon: 0 }, enviando = false;
+    let tiempoInactivo = 0, timerInterval = null;
+    const TIEMPO_MAXIMO_SEG = 45;
+
+    function gestionarInactividad() {
+      if (timerInterval) clearInterval(timerInterval);
+      tiempoInactivo = 0;
+      document.getElementById('contador-apagado').style.display = "none";
+
+      timerInterval = setInterval(() => {
+        if (personaDetectada || enviando) {
+          tiempoInactivo = 0;
+          document.getElementById('contador-apagado').style.display = "none";
+          return;
+        }
+
+        tiempoInactivo++;
+        const tiempoRestante = TIEMPO_MAXIMO_SEG - tiempoInactivo;
+
+        if (tiempoRestante <= 10 && tiempoRestante > 0) {
+          document.getElementById('contador-apagado').style.display = "block";
+          document.getElementById('contador-apagado').innerText = `Cerrando cámara en ${tiempoRestante}s...`;
+        }
+
+        if (tiempoRestante <= 0) apagarCamara();
+      }, 1000); 
+    }
+
+    async function iniciar() {
+      const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
+      try {
+        await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+
+        const modelosCache = localStorage.getItem('sisma_rostros_v4');
+        
+        if (modelosCache) {
+          const modelos = JSON.parse(modelosCache);
+          if(modelos.length > 0) {
+             modelos.forEach(m => nombresMaestro[m.cedula] = m.nombre);
+             faceMatcher = new faceapi.FaceMatcher(modelos.map(m => new faceapi.LabeledFaceDescriptors(m.cedula, [new Float32Array(m.descriptor)])), 0.55);
+             
+             document.getElementById('status-init').innerText = "V3 CONECTADO ⚡ (Caché)";
+             document.getElementById('saludo').innerHTML = "Sistema listo.<br>Toca el botón azul.";
+             document.getElementById('btnDesbloqueo').style.display = "block";
+          }
+          
+          fetch(`${urlAPI}?action=obtenerModelos`, { redirect: 'follow' })
+            .then(res => res.json())
+            .then(data => {
+              if(data.length > 0) localStorage.setItem('sisma_rostros_v4', JSON.stringify(data));
+            }).catch(e => console.log("Caché de fondo falló", e));
+
+        } else {
+          const res = await fetch(`${urlAPI}?action=obtenerModelos`, { redirect: 'follow' });
+          const modelos = await res.json();
+          
+          if (!modelos || modelos.length === 0) {
+             document.getElementById('saludo').innerHTML = "⚠️ No hay rostros registrados.";
+             return;
+          }
+
+          localStorage.setItem('sisma_rostros_v4', JSON.stringify(modelos));
+          modelos.forEach(m => nombresMaestro[m.cedula] = m.nombre);
+          faceMatcher = new faceapi.FaceMatcher(modelos.map(m => new faceapi.LabeledFaceDescriptors(m.cedula, [new Float32Array(m.descriptor)])), 0.55);
+
+          document.getElementById('status-init').innerText = "V3 CONECTADO ✅";
+          document.getElementById('saludo').innerHTML = "Sistema listo.<br>Toca el botón azul.";
+          document.getElementById('btnDesbloqueo').style.display = "block";
+        }
+      } catch (e) {
+        document.getElementById('saludo').innerHTML = "❌ Error de conexión inicial.";
+      }
+    }
+
+    async function iniciarCamara() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        document.getElementById('video').srcObject = stream;
+        document.getElementById('btnDesbloqueo').style.display = "none";
+        document.getElementById('saludo').innerHTML = "Mira a la cámara";
+        navigator.geolocation.watchPosition(p => { coords.lat = p.coords.latitude; coords.lon = p.coords.longitude; }, null, {enableHighAccuracy: true});
+        
+        iniciarDeteccion();
+        gestionarInactividad(); 
+        programarReinicioDiario(); 
+      } catch (err) { alert("Error cámara: " + err.message); }
+    }
+
+    function apagarCamara() {
+      const video = document.getElementById('video');
+      if (video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+      }
+      if (timerInterval) clearInterval(timerInterval); 
+      document.getElementById('contador-apagado').style.display = "none";
+      document.getElementById('btnDesbloqueo').style.display = "block";
+      document.getElementById('panel').style.display = "none";
+      document.getElementById('saludo').innerHTML = "Sistema en reposo.<br>Toca para iniciar.";
+      document.getElementById('camBox').style.borderColor = "#90a4ae";
+      
+      personaDetectada = null; nombreDetectado = null; enviando = false;
+    }    
+
+    function resetearUI() {
+      personaDetectada = null; nombreDetectado = null; enviando = false; tiempoInactivo = 0; 
+      document.getElementById('contador-apagado').style.display = "none";
+      document.getElementById('panel').style.display = "none";
+      document.getElementById('saludo').innerHTML = "Mira a la cámara";
+      document.getElementById('camBox').style.borderColor = "#90a4ae";
+      document.querySelectorAll('button').forEach(b => b.disabled = false);
+    }
+
+    function programarReinicioDiario() {
+      const ahora = new Date();
+      const reinicio = new Date();
+      reinicio.setHours(3, 0, 0, 0); 
+      if (ahora.getTime() > reinicio.getTime()) reinicio.setDate(reinicio.getDate() + 1);
+      setTimeout(() => { window.location.reload(true); }, reinicio.getTime() - ahora.getTime());
+    }
+
+    function obtenerNombreCorto(nombreFull) {
+      const partes = nombreFull.trim().split(/\s+/);
+      if (partes.length >= 3) return partes[0] + " " + partes[2];
+      return partes[0] + (partes[1] ? " " + partes[1] : "");
+    }
+
+    function iniciarDeteccion() {
+      const video = document.getElementById('video');
+      let ciclosSinRostro = 0;
+
+      setInterval(async () => {
+        if (enviando || !faceMatcher) return;
+        const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+        let rostroValido = false;
+
+        if (detection) {
+          const match = faceMatcher.findBestMatch(detection.descriptor);
+          if (match.label !== 'unknown') {
+            rostroValido = true;
+            ciclosSinRostro = 0; 
+            
+            if (personaDetectada !== match.label) {
+              personaDetectada = match.label;
+              nombreDetectado = nombresMaestro[match.label];
+              
+              const nombreCorto = obtenerNombreCorto(nombreDetectado);
+              document.getElementById('saludo').innerHTML = `¡Hola, <b>${nombreCorto}</b>! 👋<br><span style="font-size:0.7em; font-weight:normal">¿Qué vas a registrar hoy?</span>`;
+              document.getElementById('camBox').style.borderColor = "#2e7d32";
+              document.getElementById('panel').style.display = "flex";
+            }
+          }
+        }
+
+        if (!rostroValido && personaDetectada) {
+          ciclosSinRostro++;
+          if (ciclosSinRostro >= 10) { resetearUI(); ciclosSinRostro = 0; }
+        }
+      }, 700);
+    }
+
+    // --- MAGIA V3: GUARDADO ULTRA RÁPIDO EN FIREBASE ---
+    async function registrar(accion) {
+      if (!personaDetectada || enviando) return;
+      enviando = true;
+      document.querySelectorAll('button').forEach(b => b.disabled = true);
+      document.getElementById('saludo').innerHTML = "⚡ ENVIANDO...";
+
+      try {
+        // En lugar de ir a Google Sheets, guardamos directo en Firebase (Tarda 0.1s)
+        await db.collection("marcaciones_v3").add({
+          cedula: personaDetectada,
+          nombre: nombreDetectado,
+          accion: accion,
+          lat: coords.lat,
+          lon: coords.lon,
+          fecha_hora: firebase.firestore.FieldValue.serverTimestamp() // Toma la hora exacta satelital
+        });
+
+        // Respuesta inmediata
+        document.getElementById('saludo').innerHTML = `✅ ¡Súper Rápido!<br><b style="font-size:0.9em">${nombreDetectado}</b><br><span style="color:#2e7d32; font-size:0.75em">Registro V3 guardado</span>`;
+        document.getElementById('camBox').style.borderColor = "#2e7d32";
+        
+        setTimeout(() => { resetearUI(); }, 2500); 
+
+      } catch (error) {
+        document.getElementById('saludo').innerHTML = "❌ Error guardando.";
+        console.error("Firebase error:", error);
+        enviando = false;
+        document.querySelectorAll('button').forEach(b => b.disabled = false);
+      }
+    }
+    
+    iniciar();
+  </script>
+</body>
+</html>
